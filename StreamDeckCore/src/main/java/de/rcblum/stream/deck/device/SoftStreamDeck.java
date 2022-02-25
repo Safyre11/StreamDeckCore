@@ -430,7 +430,9 @@ public class SoftStreamDeck implements IStreamDeck {
 						SoftStreamDeck.this.keys[i].onKeyEvent(event);
 					}
 					//Replace global call (calling every listener) with calls to the specific key
-					listeners.get(i).onKeyEvent(event);
+					if(listeners.containsKey(i)) {
+						listeners.get(i).onKeyEvent(event);
+					}
 					//Allow for single global call of -1
 					if(listeners.containsKey(-1)) {
 						listeners.get(-1).onKeyEvent(event);
