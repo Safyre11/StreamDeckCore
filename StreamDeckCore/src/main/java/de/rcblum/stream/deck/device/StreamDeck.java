@@ -5,7 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -111,16 +111,12 @@ public class StreamDeck implements InputReportListener, IStreamDeck {
 					if (i < StreamDeck.this.keys.length && StreamDeck.this.keys[i] != null) {
 						StreamDeck.this.keys[i].onKeyEvent(event);
 					}
-					StreamDeck.this.listerners.stream().forEach(l -> 
-						{
-							try {
-								l.onKeyEvent(event);
-							} 
-							catch (Exception e) {
-								LOGGER.error("Error sending out KeyEvents", e);
-							}
-						}
-					);
+					//Replace global call (calling every listener) with calls to the specific key
+					listeners.get(i).onKeyEvent(event);
+					//Allow for single global call of -1
+					if(listeners.containsKey(-1)) {
+						listeners.get(-1).onKeyEvent(event);
+					}
 				}
 				if (StreamDeck.this.recievePool.isEmpty()) {
 					try {
@@ -375,7 +371,7 @@ public class StreamDeck implements InputReportListener, IStreamDeck {
 	/**
 	 * Registered Listeners to the {@link KeyEvent}s created by the ESD
 	 */
-	private List<StreamKeyListener> listerners;
+	private HashMap<Integer, StreamKeyListener> listeners; //Changed to hashmap to allow per-key events rather than global broadcast
 
 	/**
 	 * Creates a wrapper for the Stream Deck HID
@@ -393,7 +389,7 @@ public class StreamDeck implements InputReportListener, IStreamDeck {
 		this.hidDevice = streamDeck;
 		this.hidDevice.setInputReportListener(this);
 		this.brightness[5] = (byte) brightness;
-		listerners = new ArrayList<>(5);
+		listeners = new HashMap<>(15);
 		this.sendWorker = new Thread(new DeckWorker());
 		this.sendWorker.setDaemon(true);
 		this.sendWorker.start();
@@ -438,7 +434,11 @@ public class StreamDeck implements InputReportListener, IStreamDeck {
 	 */
 	@Override
 	public boolean addKeyListener(StreamKeyListener listener) {
-		return this.listerners.add(listener);
+		return addKeyListener(listener, -1);
+	}
+
+	public boolean addKeyListener(StreamKeyListener listener, int keyPosition) {
+		return listeners.put(keyPosition, listener) == null;
 	}
 
 
@@ -447,7 +447,7 @@ public class StreamDeck implements InputReportListener, IStreamDeck {
 	 */
 	@Override
 	public boolean removeKeyListener(StreamKeyListener listener) {
-		return this.listerners.remove(listener);
+		return listeners.entrySet().removeIf(entry -> entry.getValue().equals(listener));
 	}
 
 	/* (non-Javadoc)
