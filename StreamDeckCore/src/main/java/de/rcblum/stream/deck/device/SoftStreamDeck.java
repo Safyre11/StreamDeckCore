@@ -11,6 +11,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -81,8 +82,8 @@ public class SoftStreamDeck implements IStreamDeck {
 	private IStreamDeck streamDeck = null;
 	
 	StreamItem[] keys = null;
-	
-	private List<StreamKeyListener> listerners;
+
+	private HashMap<Integer, StreamKeyListener> listeners; //Changed to hashmap to allow per-key events rather than global broadcast
 	
 	private JFrame frame = null;
 
@@ -107,7 +108,7 @@ public class SoftStreamDeck implements IStreamDeck {
 	public SoftStreamDeck(String name, IStreamDeck streamDeck) {
 		this.streamDeck = streamDeck;
 		this.keys = new StreamItem[streamDeck != null ? this.streamDeck.getKeySize() : 15];
-		listerners = new ArrayList<>(4);
+		listeners = new HashMap<>(15);
 		this.writeBuffer = IconHelper.getImageFromResource("/resources/sd-background.png");
 		this.drawBuffer = IconHelper.getImageFromResource("/resources/sd-background.png");
 		this.name = name;
@@ -166,14 +167,20 @@ public class SoftStreamDeck implements IStreamDeck {
 
 	@Override
 	public boolean addKeyListener(StreamKeyListener listener) {
-		boolean added = this.listerners.add(listener);
+		boolean added = addKeyListener(listener, -1);
 		return streamDeck != null ? streamDeck.addKeyListener(listener) : added;
 	}
 
 	@Override
+	public boolean addKeyListener(StreamKeyListener listener, int keyPosition) {
+		boolean added = listeners.put(keyPosition, listener) == null;
+		return streamDeck != null ? streamDeck.addKeyListener(listener, keyPosition) : added;
+	}
+
+	@Override
 	public boolean removeKeyListener(StreamKeyListener listener) {
-		boolean removed = this.listerners.remove(listener);
-		return streamDeck != null ? streamDeck.removeKeyListener(listener) : removed;
+		listeners.entrySet().removeIf(entry -> entry.getValue().equals(listener));
+		return streamDeck == null || streamDeck.removeKeyListener(listener);
 	}
 
 	@Override
@@ -422,16 +429,12 @@ public class SoftStreamDeck implements IStreamDeck {
 					if (i < SoftStreamDeck.this.keys.length && SoftStreamDeck.this.keys[i] != null) {
 						SoftStreamDeck.this.keys[i].onKeyEvent(event);
 					}
-					SoftStreamDeck.this.listerners.stream().forEach(l -> 
-						{
-							try {
-								l.onKeyEvent(event);
-							} 
-							catch (Exception e) {
-								LOGGER.error("Error sending out KeyEvents", e);
-							}
-						}
-					);
+					//Replace global call (calling every listener) with calls to the specific key
+					listeners.get(i).onKeyEvent(event);
+					//Allow for single global call of -1
+					if(listeners.containsKey(-1)) {
+						listeners.get(-1).onKeyEvent(event);
+					}
 				}
 				if (SoftStreamDeck.this.recievePool.isEmpty()) {
 					try {

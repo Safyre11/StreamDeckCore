@@ -42,11 +42,21 @@ public interface IStreamDeck {
 	void addKey(int keyId, StreamItem item);
 
 	/**
-	 * Adds an StreamKeyListener to the ESD. WHenever a Event is generated, the Listener will be informed.
+	 * Adds a StreamKeyListener to the global event listener. There can only be 1 global event listener (key: -1)
+	 *
 	 * @param listener	Listener to be added
 	 * @return	<code>true</code> if listener was added, <code>false</code> if listener is already registered.
 	 */
 	boolean addKeyListener(StreamKeyListener listener);
+
+	/**
+	 * Adds a StreamKeyListener for the specified key.
+	 *
+	 * @param listener Listener to be added
+	 * @param keyPosition index of the key for this listener to be assigned to
+	 * @return true if listener was added, false if listener is already registered
+	 */
+	boolean addKeyListener(StreamKeyListener listener, int keyPosition);
 
 	/**
 	 * Removes an StreamKeyListener from the ESD.
