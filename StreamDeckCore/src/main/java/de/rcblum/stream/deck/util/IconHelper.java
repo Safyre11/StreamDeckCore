@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -1004,6 +1005,11 @@ public class IconHelper {
 			}
 		}
 		return returnImage;
+	}
+
+	public static SDImage getImageFromURL(URL url) throws IOException {
+		BufferedImage img = ImageIO.read(url);
+		return convertImage(img);
 	}
 	
 	private IconHelper() {}
